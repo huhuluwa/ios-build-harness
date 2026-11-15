@@ -1,0 +1,86 @@
+name: Build unsigned IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Check out harness
+        uses: actions/checkout@v4
+
+      - name: Download encrypted source archive
+        run: |
+          curl --fail --location --retry 3 \
+            https://github.com/huhuluwa/ios-build-harness/releases/download/source-v1/godot-ipad-source.enc \
+            --output source.enc
+
+      - name: Decrypt source archive
+        env:
+          SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
+        run: |
+          python3 -m pip install --user cryptography
+          python3 - <<'PY'
+          import base64, os, pathlib
+          from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+          key = base64.b64decode(os.environ["SOURCE_KEY"])
+          blob = pathlib.Path("source.enc").read_bytes()
+          plain = AESGCM(key).decrypt(blob[:12], blob[12:], b"godot-ipad-native-port")
+          pathlib.Path("source.zip").write_bytes(plain)
+          PY
+          mkdir source
+          unzip -q source.zip -d source
+
+      - name: Build iOS arm64 runtime and Xcode bundle
+        working-directory: source
+        run: |
+          python3 -m pip install --user scons
+          export PATH="$(python3 -m site --user-base)/bin:$PATH"
+          scons platform=ios target=template_release arch=arm64 metal=yes \
+            vulkan=no generate_bundle=yes module_portable_tools_enabled=yes
+
+      - name: Prepare concrete unsigned app project
+        working-directory: source
+        run: |
+          python3 tools/package_unsigned_ios_ipa.py \
+            --template bin/godot_ios.zip \
+            --output build/PortableGodot-unsigned.ipa \
+            --binary-name PortableGodot \
+            --bundle-id com.huhuluwa.godotipad \
+            --display-name "Portable Godot iPad"
+
+      - name: Build unsigned iOS app with Xcode
+        working-directory: source
+        run: |
+          xcodebuild \
+            -project build/PortableGodot-unsigned-staging/PortableGodot.xcodeproj \
+            -scheme PortableGodot \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination generic/platform=iOS \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            CONFIGURATION_BUILD_DIR="$GITHUB_WORKSPACE/source/build/PortableGodot-unsigned-staging/build/Release-iphoneos"
+
+      - name: Package IPA
+        working-directory: source
+        run: |
+          mkdir -p build/PortableGodot-unsigned-staging/Payload
+          cp -R build/PortableGodot-unsigned-staging/build/Release-iphoneos/PortableGodot.app \
+            build/PortableGodot-unsigned-staging/Payload/
+          rm -f build/PortableGodot-unsigned.ipa
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/PortableGodot-unsigned-staging/Payload \
+            build/PortableGodot-unsigned.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: PortableGodot-unsigned-ipa
+          path: source/build/PortableGodot-unsigned.ipa
