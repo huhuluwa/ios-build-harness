@@ -41,7 +41,7 @@ jobs:
         run: |
           python3 -m venv .build-venv
           .build-venv/bin/python -m pip install scons
-          scons platform=ios target=template_release arch=arm64 metal=yes \
+          .build-venv/bin/scons platform=ios target=template_release arch=arm64 metal=yes \
             vulkan=no generate_bundle=yes module_portable_tools_enabled=yes
 
       - name: Prepare concrete unsigned app project
