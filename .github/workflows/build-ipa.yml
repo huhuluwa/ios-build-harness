@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-13
+    runs-on: macos-15
     steps:
       - name: Check out harness
         uses: actions/checkout@v4
@@ -84,4 +84,5 @@ jobs:
         with:
           name: PortableGodot-unsigned-ipa
           path: source/build/PortableGodot-unsigned.ipa
+
 
