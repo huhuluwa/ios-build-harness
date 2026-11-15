@@ -53,6 +53,27 @@ jobs:
             --binary-name PortableGodot \
             --bundle-id com.huhuluwa.godotipad \
             --display-name "Portable Godot iPad"
+          mkdir -p build/PortableGodot-unsigned-staging/PortableGodot/Images.xcassets/AppIcon.appiconset
+          cp build/PortableGodot-unsigned-staging/PortableGodot/Images.xcassets/SplashImage.imageset/splash@3x.png \
+            build/PortableGodot-unsigned-staging/PortableGodot/Images.xcassets/AppIcon.appiconset/Icon-1024.png
+          sips -z 1024 1024 \
+            build/PortableGodot-unsigned-staging/PortableGodot/Images.xcassets/AppIcon.appiconset/Icon-1024.png
+          cat > build/PortableGodot-unsigned-staging/PortableGodot/Images.xcassets/AppIcon.appiconset/Contents.json <<'JSON'
+          {
+            "images" : [
+              {
+                "filename" : "Icon-1024.png",
+                "idiom" : "ios-marketing",
+                "scale" : "1x",
+                "size" : "1024x1024"
+              }
+            ],
+            "info" : {
+              "author" : "xcode",
+              "version" : 1
+            }
+          }
+          JSON
 
       - name: Build unsigned iOS app with Xcode
         working-directory: source
