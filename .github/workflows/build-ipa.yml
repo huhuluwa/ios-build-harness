@@ -23,8 +23,9 @@ jobs:
         env:
           SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
         run: |
-          python3 -m pip install --user cryptography
-          python3 - <<'PY'
+          python3 -m venv .decrypt-venv
+          .decrypt-venv/bin/python -m pip install cryptography
+          .decrypt-venv/bin/python - <<'PY'
           import base64, os, pathlib
           from cryptography.hazmat.primitives.ciphers.aead import AESGCM
           key = base64.b64decode(os.environ["SOURCE_KEY"])
@@ -38,8 +39,8 @@ jobs:
       - name: Build iOS arm64 runtime and Xcode bundle
         working-directory: source
         run: |
-          python3 -m pip install --user scons
-          export PATH="$(python3 -m site --user-base)/bin:$PATH"
+          python3 -m venv .build-venv
+          .build-venv/bin/python -m pip install scons
           scons platform=ios target=template_release arch=arm64 metal=yes \
             vulkan=no generate_bundle=yes module_portable_tools_enabled=yes
 
